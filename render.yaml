@@ -1,0 +1,12 @@
+﻿services:
+  - type: web
+    name: render-server
+    env: node
+    plan: free
+    buildCommand: "npm install"
+    startCommand: "node server.js"
+    envVars:
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: PORT
+        value: 10000
