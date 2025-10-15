@@ -7,6 +7,7 @@ app.use(cors());
 app.use(express.json());
 
 const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY;
+app.get("/", (req, res) => res.json({ status: "ok" }));
 
 app.post("/speak", async (req, res) => {
   try {
@@ -42,3 +43,4 @@ app.post("/speak", async (req, res) => {
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
+
