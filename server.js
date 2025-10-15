@@ -14,7 +14,7 @@ app.get("/", (req, res) => res.json({ status: "✅ Server running" }));
 app.post("/api/elevenlabs", async (req, res) => {
   try {
     const { text, voiceId = "21m00Tcm4TlvDq8ikWAM" } = req.body;
-    const r = await fetch(https://api.elevenlabs.io/v1/text-to-speech/, {
+    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice_id}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -37,3 +37,4 @@ app.post("/api/elevenlabs", async (req, res) => {
 });
 
 app.listen(PORT, () => console.log(✅ ElevenLabs server running on ));
+
