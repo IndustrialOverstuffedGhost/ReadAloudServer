@@ -1,40 +1,44 @@
-﻿import express from "express";
-import fetch from "node-fetch";
+import express from "express";
 import cors from "cors";
-import dotenv from "dotenv";
+import fetch from "node-fetch";
 
-dotenv.config();
 const app = express();
-app.use(express.json());
 app.use(cors());
-const PORT = process.env.PORT || 10000;
+app.use(express.json());
 
-app.get("/", (req, res) => res.json({ status: "✅ Server running" }));
+const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY;
 
-app.post("/api/elevenlabs", async (req, res) => {
+app.post("/speak", async (req, res) => {
   try {
-    const { text, voiceId = "21m00Tcm4TlvDq8ikWAM" } = req.body;
-    const r = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice_id}`, {
+    const { text, voice_id = "EXAVITQu4vr4xnSDxMaL" } = req.body;
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice_id}`, {
       method: "POST",
       headers: {
+        "xi-api-key": ELEVEN_API_KEY,
         "Content-Type": "application/json",
-        "xi-api-key": process.env.ELEVENLABS_API_KEY
       },
       body: JSON.stringify({
         text,
-        model_id: "eleven_multilingual_v2",
-        voice_settings: { stability: 0.6, similarity_boost: 0.8 }
-      })
+        voice_settings: {
+          stability: 0.6,
+          similarity_boost: 0.8,
+        },
+      }),
     });
-    if (!r.ok) throw new Error(ElevenLabs: );
-    const audio = Buffer.from(await r.arrayBuffer());
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`API error: ${errText}`);
+    }
+
+    const audioBuffer = await response.arrayBuffer();
     res.set("Content-Type", "audio/mpeg");
-    res.send(audio);
-  } catch (e) {
-    console.error(e);
-    res.status(500).json({ error: e.message });
+    res.send(Buffer.from(audioBuffer));
+  } catch (error) {
+    console.error("Error generating speech:", error);
+    res.status(500).json({ error: error.message });
   }
 });
 
-app.listen(PORT, () => console.log(✅ ElevenLabs server running on ));
-
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => console.log(`✅ Server running on port ${PORT}`));
