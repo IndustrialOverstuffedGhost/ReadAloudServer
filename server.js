@@ -64,6 +64,38 @@ app.get("/speak", (req, res) => {
   }
 });
 
+// Optional browser-friendly fallback
+app.get("/speak", (req, res) => {
+  res.status(200).json({
+    message: "👋 This endpoint only supports POST.",
+    usage: {
+      method: "POST",
+      url: "/speak",
+      body: { text: "Your text to read", voice_id: "optional voice_id" }
+    }
+  });
+});
+
+// ✅ Confirm API key loaded
+if (ELEVEN_API_KEY) {
+  console.log("✅ ElevenLabs API key loaded, prefix:", ELEVEN_API_KEY.substring(0, 8) + "...");
+} else {
+  console.log("❌ ELEVENLABS_API_KEY not found. Check Render Environment settings.");
+}
+
+// Keep-alive ping
+setInterval(async () => {
+  try {
+    await fetch("https://readaloudserver.onrender.com/");
+    console.log("Keepalive ping OK");
+  } catch (e) {
+    console.log("Keepalive failed:", e.message);
+  }
+}, 9 * 60 * 1000);
+
+app.listen(PORT, () => console.log(`✅ ReadAloud server running on ${PORT}`));
+
+
 setInterval(async () => {
   try {
     await fetch("https://readaloudserver.onrender.com/");
