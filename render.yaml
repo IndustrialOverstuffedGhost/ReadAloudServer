@@ -1,6 +1,6 @@
-﻿services:
+services:
   - type: web
-    name: render-server
+    name: readaloudserver
     env: node
     plan: free
     buildCommand: "npm install"
