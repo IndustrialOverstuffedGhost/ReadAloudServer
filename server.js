@@ -42,6 +42,19 @@ app.post("/speak", async (req, res) => {
         voice_settings: { stability: 0.6, similarity_boost: 0.8 }
       })
     });
+	
+	// Optional browser-friendly fallback
+app.get("/speak", (req, res) => {
+  res.status(200).json({
+    message: "👋 This endpoint only supports POST.",
+    usage: {
+      method: "POST",
+      url: "/speak",
+      body: { text: "Your text to read", voice_id: "optional voice_id" }
+    }
+  });
+});
+	
     if (!r.ok) return res.status(r.status).json({ error: await r.text() });
     const buf = Buffer.from(await r.arrayBuffer());
     res.set("Content-Type", "audio/mpeg");
