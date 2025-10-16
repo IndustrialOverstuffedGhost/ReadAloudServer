@@ -1,31 +1,30 @@
 // ===============================
-// ReadAloud Pro Render Server
-// ElevenLabs-only version
+// ReadAloud Pro Render Server (ESM)
 // ===============================
 
-// Imports
-const express = require("express");
-const cors = require("cors");
-const fetch = require("node-fetch");
-require("dotenv").config();
+import express from "express";
+import cors from "cors";
+import fetch from "node-fetch";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 // Environment variables
 const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY;
 const PORT = process.env.PORT || 10000;
 
-// Create server
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Confirm key loaded
+// Confirm API key loaded
 if (ELEVEN_API_KEY) {
   console.log("✅ ElevenLabs API key loaded, prefix:", ELEVEN_API_KEY.substring(0, 8) + "...");
 } else {
   console.log("❌ ELEVENLABS_API_KEY not found. Check Render Environment settings.");
 }
 
-// Root
+// Root endpoint
 app.get("/", (req, res) => {
   res.status(200).json({ message: "ReadAloud Pro ElevenLabs Server is running ✅" });
 });
