@@ -1,15 +1,20 @@
+import dotenv from "dotenv";
 import express from "express";
 import cors from "cors";
 import fetch from "node-fetch";
-import dotenv from "dotenv";
 
 dotenv.config();
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 10000;
+require("dotenv").config();
 const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY;
+
+
+const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY;
+const PORT = process.env.PORT || 10000;
+
 
 app.get("/", (req, res) => res.json({ status: "ok" }));
 
