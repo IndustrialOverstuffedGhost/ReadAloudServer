@@ -1,106 +1,117 @@
+// ===============================
+// ReadAloud Pro Render Server (ESM)
+// ===============================
+
 import express from "express";
-import fetch from "node-fetch";
 import cors from "cors";
-import https from "https";
+import fetch from "node-fetch";
 import dotenv from "dotenv";
 
 dotenv.config();
+
+// Environment variables
 const ELEVEN_API_KEY = process.env.ELEVENLABS_API_KEY;
+const PORT = process.env.PORT || 10000;
+
 const app = express();
-app.use(cors({
-  origin: "*",
-  methods: ["GET", "POST", "OPTIONS"],
-  allowedHeaders: ["Content-Type"]
-}));
+app.use(cors());
 app.use(express.json());
 
-// persistent HTTPS session for faster TLS handshakes
-const agent = new https.Agent({ keepAlive: true });
-
-/**
- * Simple in-memory cache (1 minute) to prevent re-generation
- */
-const cache = new Map();
-function cacheKey(text, voice) {
-  return `${voice}:${text.trim().slice(0, 300)}`;
+// Confirm API key loaded
+if (ELEVEN_API_KEY) {
+  console.log("✅ ElevenLabs API key loaded, prefix:", ELEVEN_API_KEY.substring(0, 8) + "...");
+} else {
+  console.log("❌ ELEVENLABS_API_KEY not found. Check Render Environment settings.");
 }
-function pruneCache() {
-  const now = Date.now();
-  for (const [k, v] of cache) if (now - v.time > 60_000) cache.delete(k);
-}
-setInterval(pruneCache, 30_000);
 
-/**
- * Stream ElevenLabs voice data to the browser
- */
-app.get("/speak", async (req, res) => {
-  const text = req.query.text || "";
-  const voice = req.query.voice_id || "EXAVITQu4vr4xnSDxMaL";
-  if (!text) return res.status(400).json({ error: "missing text" });
-
-  const key = cacheKey(text, voice);
-  if (cache.has(key)) {
-    console.log("⚡ Cache hit");
-    const cached = cache.get(key);
-    res.setHeader("Content-Type", "audio/mpeg");
-    cached.data.pipe(res);
-    return;
-  }
-
-  try {
-    const r = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voice}/stream`,
-      {
-        method: "POST",
-        headers: {
-          "xi-api-key": ELEVEN_API_KEY,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          text,
-          model_id: "eleven_monolingual_v1",
-          voice_settings: { stability: 0.6, similarity_boost: 0.8 },
-        }),
-        agent,
-      }
-    );
-
-    if (!r.ok) {
-      const err = await r.text();
-      console.error("ElevenLabs error:", err);
-      return res.status(r.status).send(err);
-    }
-
-    res.setHeader("Content-Type", "audio/mpeg");
-    // store a tee’d copy in cache while streaming to user
-    const { PassThrough } = await import("stream");
-    const clone = new PassThrough();
-    r.body.pipe(clone);
-    cache.set(key, { data: clone, time: Date.now() });
-    r.body.pipe(res);
-  } catch (err) {
-    console.error("Speak error:", err);
-    res.status(500).json({ error: "Server error" });
-  }
+// Root endpoint
+app.get("/", (req, res) => {
+  res.status(200).json({ message: "ReadAloud Pro ElevenLabs Server is running ✅" });
 });
 
-/**
- * Voices endpoint
- */
+// Fetch voices
 app.get("/voices", async (req, res) => {
   try {
-    const r = await fetch("https://api.elevenlabs.io/v1/voices", {
+    const response = await fetch("https://api.elevenlabs.io/v1/voices", {
       headers: { "xi-api-key": ELEVEN_API_KEY },
-      agent,
     });
-    const data = await r.json();
+
+    if (!response.ok) {
+      const text = await response.text();
+      console.error("Voices error:", response.status, text);
+      return res.status(response.status).json({ error: "Voices fetch failed", details: text });
+    }
+
+    const data = await response.json();
     res.json(data);
   } catch (err) {
-    res.status(500).json({ error: "Failed to load voices" });
+    console.error("Voices fetch exception:", err);
+    res.status(500).json({ error: "Voices fetch exception", details: err.message });
   }
 });
 
-const PORT = process.env.PORT || 10000;
-app.listen(PORT, () =>
-  console.log(`✅ Optimized server running on port ${PORT}`)
-);
+// Speak (POST only)
+app.post("/speak", async (req, res) => {
+  const { text, voice_id = "EXAVITQu4vr4xnSDxMaL" } = req.body || {};
+
+  if (!text) return res.status(400).json({ error: "Missing text input" });
+
+  try {
+    const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice_id}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "xi-api-key": ELEVEN_API_KEY,
+      },
+      body: JSON.stringify({
+        text,
+        model_id: "eleven_multilingual_v2",
+        voice_settings: {
+          stability: 0.6,
+          similarity_boost: 0.8,
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("Speak error:", response.status, errText);
+      return res.status(response.status).json({ error: "Speak failed", details: errText });
+    }
+
+    const audioBuffer = await response.arrayBuffer();
+    res.set({
+      "Content-Type": "audio/mpeg",
+      "Content-Disposition": 'inline; filename="speech.mp3"',
+    });
+    res.send(Buffer.from(audioBuffer));
+  } catch (err) {
+    console.error("Speak exception:", err);
+    res.status(500).json({ error: "Speak exception", details: err.message });
+  }
+});
+
+// Browser-friendly fallback for GET /speak
+app.get("/speak", (req, res) => {
+  res.status(200).json({
+    message: "👋 This endpoint only supports POST.",
+    usage: {
+      method: "POST",
+      url: "/speak",
+      body: { text: "Your text to read", voice_id: "optional voice_id" },
+    },
+  });
+});
+
+// Keepalive ping
+setInterval(async () => {
+  try {
+    await fetch("https://readaloudserver.onrender.com/");
+    console.log("Keepalive ping OK");
+  } catch (e) {
+    console.log("Keepalive failed:", e.message);
+  }
+}, 9 * 60 * 1000);
+
+// Start server
+app.listen(PORT, () => console.log(`✅ ReadAloud server running on ${PORT}`));
